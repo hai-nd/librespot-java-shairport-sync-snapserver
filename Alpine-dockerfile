@@ -1,0 +1,229 @@
+# ARG alpine_version=3.20
+ARG S6_OVERLAY_VERSION=3.2.0.0
+
+###### LIBRESPOT START ###### git checkout 3781a089a69ce9883a299dfd191d90c9a5348819
+FROM maven:latest AS libre-builder
+
+ARG LIBRESPOT_JAVA_VERSION=1.6.3
+
+RUN apt-get update \
+    && apt-get install -yq wget unzip
+
+WORKDIR /root
+RUN wget https://github.com/librespot-org/librespot-java/archive/refs/tags/v$LIBRESPOT_JAVA_VERSION.zip \
+    && unzip v*.zip \
+    && cd librespot* \
+    && mvn clean package
+
+FROM alpine:latest 
+
+RUN apk -U add dumb-init openjdk17-jre alsa-utils
+
+COPY --from=builder /root/librespot*/api/target/librespot-api-*.jar /usr/local/bin
+COPY config.toml /config/
+###### LIBRESPOT END ######
+
+FROM docker.io/alpine:latest AS builder
+RUN apk add --no-cache \
+    # LIBRESPOT
+    #cargo \
+    #clang18-dev \
+    #git \
+    #musl-dev \
+    #pkgconfig \
+    # SNAPCAST
+    cmake \
+    alsa-lib-dev \
+    avahi-dev \
+    bash \
+    boost-dev \
+    expat-dev \
+    flac-dev \
+    git \
+    libvorbis-dev \
+    npm \
+    soxr-dev \
+    opus-dev \
+    # SHAIRPORT
+    alpine-sdk \
+    alsa-lib-dev \
+    autoconf \
+    automake \
+    avahi-dev \
+    dbus \
+    ffmpeg-dev \
+    git \
+    libtool \
+    libdaemon-dev \
+    libplist-dev \
+    libsodium-dev \
+    libgcrypt-dev \
+    libconfig-dev \
+    openssl-dev \
+    popt-dev \
+    soxr-dev \
+    xmltoman \
+    xxd
+
+###### SNAPCAST BUNDLE START ###### git checkout 208066e5bb3f77482a62301283a8075912a7e22c
+FROM builder AS snapcast
+
+### SNAPSERVER ### git checkout 208066e5bb3f77482a62301283a8075912a7e22c
+RUN git clone https://github.com/badaix/snapcast.git /snapcast \
+    && cd snapcast \
+    && git checkout tags/v0.29.0
+WORKDIR /snapcast
+RUN cmake -S . -B build -DBUILD_CLIENT=OFF \
+    && cmake --build build -j $(( $(nproc) -1 )) --verbose \
+    && strip -s ./bin/snapserver
+WORKDIR /
+
+# Gather all shared libaries necessary to run the executable
+RUN mkdir /snapserver-libs \
+    && ldd /snapcast/bin/snapserver | cut -d" " -f3 | xargs cp --dereference --target-directory=/snapserver-libs/
+### SNAPSERVER END ###
+
+### SNAPWEB ### git checkout 66a15126578548ed544ab5b59acdece3825c2699
+RUN git clone https://github.com/badaix/snapweb.git
+WORKDIR /snapweb
+RUN git checkout tags/v0.8.0
+ENV GENERATE_SOURCEMAP="false"
+RUN npm install -g npm@latest \
+    && npm ci \
+    && npm run build
+WORKDIR /
+### SNAPWEB END ###
+###### SNAPCAST BUNDLE END ######
+
+###### SHAIRPORT BUNDLE START ######
+FROM builder AS shairport
+
+### NQPTP ###  checkout ee6663c99d95f9d25fbe07b0982a3c3b622ba0f5 checkout tags/v1.2.4
+RUN git clone https://github.com/mikebrady/nqptp.git /nqptp
+WORKDIR /nqptp
+RUN git checkout ee6663c99d95f9d25fbe07b0982a3c3b622ba0f5 
+RUN autoreconf -i \
+    && ./configure \
+    && make -j $(( $(nproc) -1 ))
+WORKDIR /
+### NQPTP END ###
+
+### ALAC ###
+RUN git clone https://github.com/mikebrady/alac
+WORKDIR /alac
+RUN git checkout 34b327964c2287a49eb79b88b0ace278835ae95f \
+    && autoreconf -i \
+    && ./configure \
+    && make -j $(( $(nproc) -1 )) \
+    && make install
+WORKDIR /
+### ALAC END ###
+
+### SPS ### git checkout 654f59693240420ea96dba1354a06ce44d1293d7
+RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
+    && cd /shairport \
+    && git checkout 654f59693240420ea96dba1354a06ce44d1293d7
+WORKDIR /shairport/build
+RUN autoreconf -i ../ \
+    && ../configure --sysconfdir=/etc \
+                    --with-soxr \
+                    --with-avahi \
+                    --with-pipe \
+                    --with-ssl=openssl \
+                    --with-airplay-2 \
+                    --with-stdout \
+                    --with-metadata \
+                    --with-apple-alac \
+    && DESTDIR=install make -j $(( $(nproc) -1 )) install
+
+WORKDIR /
+
+# Gather all shared libaries necessary to run the executable
+RUN mkdir /shairport-libs \
+    && ldd /shairport/build/shairport-sync | cut -d" " -f3 | xargs cp --dereference --target-directory=/shairport-libs/
+### SPS END ###
+###### SHAIRPORT BUNDLE END ######
+
+###### BASE START ######
+FROM docker.io/alpine:latest AS base
+ARG S6_OVERLAY_VERSION
+RUN apk add --no-cache \
+    avahi \
+    dbus \
+    fdupes
+# Copy all necessary libaries into one directory to avoid carring over duplicates
+# Removes all libaries that will be installed in the final image
+##### COPY --from=librespot /librespot-libs/ /tmp-libs/
+COPY --from=snapcast /snapserver-libs/ /tmp-libs/
+COPY --from=shairport /shairport-libs/ /tmp-libs/
+RUN fdupes -d -N /tmp-libs/ /usr/lib/
+
+# Install s6
+ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz \
+    https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-x86_64.tar.xz /tmp/
+RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz \
+    && tar -C / -Jxpf /tmp/s6-overlay-x86_64.tar.xz \
+    && rm -rf /tmp/*
+
+###### BASE END ######
+
+###### MAIN START ######
+FROM docker.io/alpine:latest
+
+ENV S6_CMD_WAIT_FOR_SERVICES=1
+ENV S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0
+
+RUN apk add --no-cache \
+            avahi \
+            dbus \
+            nano \
+            procps \
+    && rm -rf /lib/apk/db/*
+
+# Copy extracted s6-overlay and libs from base
+COPY --from=base /command /command/
+COPY --from=base /package/ /package/
+COPY --from=base /etc/s6-overlay/ /etc/s6-overlay/
+COPY --from=base init /init
+COPY --from=base /tmp-libs/ /usr/lib/
+
+# Copy all necessary files from the builders
+#### COPY --from=librespot /librespot/target/release/librespot /usr/local/bin/
+COPY --from=snapcast /snapcast/bin/snapserver /usr/local/bin/
+COPY --from=snapcast /snapweb/dist /usr/share/snapserver/snapweb
+COPY --from=shairport /shairport/build/shairport-sync /usr/local/bin/
+COPY --from=shairport /nqptp/nqptp /usr/local/bin/
+
+# Set permissions for the plugin folder
+RUN mkdir -p /etc/plug-ins
+
+# Copy metadata plugins to /etc/plug-ins/
+COPY ./plug-ins/meta_mopidy.py /etc/plug-ins
+COPY ./plug-ins/meta_mpd.py /etc/plug-ins
+COPY ./plug-ins/meta_librespot-java.py /etc/plug-ins
+RUN chmod -R +x /etc/plug-ins && \
+    chmod -R 777 /etc/plug-ins
+
+# Copy local files
+COPY ./s6-overlay/s6-rc.d /etc/s6-overlay/s6-rc.d
+RUN chmod +x /etc/s6-overlay/s6-rc.d/01-startup/script.sh
+RUN chmod +x /etc/s6-overlay/s6-rc.d/02-dbus/data/check
+RUN chmod -R 777 /etc/s6-overlay
+RUN mkdir -p /var/run/dbus/
+
+RUN mkdir -p /config && \
+    chmod -R 777 /config
+
+# Symbolic links for configuration files to use /config
+RUN ln -s /config/snapserver.conf /etc/snapserver.conf && \
+    ln -s /config/credentials.json /etc/credentials.json && \
+    ln -s /config/shairport-sync.conf /etc/shairport-sync.conf
+
+# Symbolic link for the plugins folder to /config to avoid overwriting /etc
+RUN ln -s /config/plug-ins /etc/plug-ins
+
+# Set the PATH environment variable
+ENV PATH="/command:$PATH"
+
+ENTRYPOINT ["/init"]
+###### MAIN END ######
