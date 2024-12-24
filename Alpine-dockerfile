@@ -20,7 +20,7 @@ FROM alpine:latest
 RUN apk -U add dumb-init openjdk17-jre alsa-utils
 
 COPY --from=builder /root/librespot*/api/target/librespot-api-*.jar /usr/local/bin
-COPY config.toml /config/
+
 ###### LIBRESPOT END ######
 
 FROM docker.io/alpine:latest AS builder
@@ -194,9 +194,14 @@ COPY --from=snapcast /snapweb/dist /usr/share/snapserver/snapweb
 COPY --from=shairport /shairport/build/shairport-sync /usr/local/bin/
 COPY --from=shairport /nqptp/nqptp /usr/local/bin/
 
+# COPY config.toml /config/ - copy librespot-api.sh
+COPY ./plug-ins/librespot-api.sh /usr/local/bin
+COPY ./plug-ins/config.toml /usr/local/bin
+RUN chmod -R +x /usr/local/bin/librespot-api.sh && \
+    chmod -R 777 /usr/local/bin/config.toml
+
 # Set permissions for the plugin folder
 RUN mkdir -p /etc/plug-ins
-
 # Copy metadata plugins to /etc/plug-ins/
 COPY ./plug-ins/meta_mopidy.py /etc/plug-ins
 COPY ./plug-ins/meta_mpd.py /etc/plug-ins
@@ -213,14 +218,18 @@ RUN mkdir -p /var/run/dbus/
 
 RUN mkdir -p /config && \
     chmod -R 777 /config
-
-# Symbolic links for configuration files to use /config
-RUN ln -s /config/snapserver.conf /etc/snapserver.conf && \
-    ln -s /config/credentials.json /etc/credentials.json && \
-    ln -s /config/shairport-sync.conf /etc/shairport-sync.conf
+# Symbolic links for meta files to use /config
+#RUN ln -s /config/meta_mopidy.py /etc/plug-ins/meta_mopidy.py && \
+#    ln -s /config/meta_mpd.py /etc/plug-ins/meta_mpd.py && \
+#    ln -s /config/meta_librespot-java.py /etc/plug-ins/meta_librespot-java.py
+# Symbolic links for configuration files to use /config ### ln -s /config/snapserver.conf /etc/snapserver.conf &&
+RUN ln -sf /config/snapserver.conf /etc/snapserver.conf && \
+    ln -sf /config/credentials.json /etc/credentials.json && \
+    ln -sf /config/shairport-sync.conf /etc/shairport-sync.conf && \
+    ln -sf /config/config.toml /usr/local/bin/config.toml
 
 # Symbolic link for the plugins folder to /config to avoid overwriting /etc
-RUN ln -s /config/plug-ins /etc/plug-ins
+RUN ln -s /config /etc/plug-ins
 
 # Set the PATH environment variable
 ENV PATH="/command:$PATH"
