@@ -50,9 +50,9 @@ params = {
 
 defaults = {
     # Connection
-    'librespot-host': '192.168.1.17',
+    'librespot-host': 'localhost',
     'librespot-port': 24879,
-    'snapcast-host': '192.168.1.17',
+    'snapcast-host': 'localhost',
     'snapcast-port': 1780,
     'stream': 'default',
 }

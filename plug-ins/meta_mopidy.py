@@ -48,9 +48,9 @@ params = {
 
 defaults = {
     # Connection
-    "mopidy-host": "192.168.1.17",
+    "mopidy-host": "192.168.1.14",
     "mopidy-port": 6680,
-    "snapcast-host": "192.168.1.17",
+    "snapcast-host": "192.168.1.14",
     "snapcast-port": 1780,
     "stream": "default",
 }
