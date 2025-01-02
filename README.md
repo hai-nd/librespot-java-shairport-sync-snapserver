@@ -3,7 +3,7 @@
 Alpine based Docker image for running the [snapserver part of snapcast](https://github.com/badaix/snapcast) with
 [librespot-java](https://github.com/librespot-org/librespot-java) and [shairport-sync](https://github.com/mikebrady/shairport-sync) as input.
 
-Idea adapted from [librespot-snapserver](https://github.com/djmaze/librespot-snapserver) and based on [shairport-sync docker image](https://github.com/mikebrady/shairport-sync/tree/master/docker)
+Idea adapted from [librespot-shairport-snapserver](https://github.com/yubiuser/librespot-shairport-snapserver) and based on [shairport-sync docker image](https://github.com/mikebrady/shairport-sync/tree/master/docker)
 
  **Background:** When this project started, the last releases of *snapcast* and *librespot* where outdated compared to their respective `develop` branches.
   Therefore, everything is compiled from source using the development branches for all repos.
