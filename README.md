@@ -33,20 +33,21 @@ or with `docker-compose.yml`
 ```yml
 services:
   snapcast:
-    image: ghcr.io/yubiuser/librespot-shairport-snapserver
-    container_name: snapcast
+    image: haingo65/librespot-java-shairport-sync-snapserver
+    container_name: snapserver
     restart: unless-stopped
     network_mode: host
     volumes:
-     - ./snapserver.conf:/etc/snapserver.conf
-     #- /tmp/snapfifo:/tmp/snapfifo
+     - ./snapserver/config:/config
+     - ./snapserver/plug-ins:/etc/plug-ins 
+     - "$(pwd)"/tmp:/tmp
 ```
 
 ### Build locally
 
 To build the image simply run
 
-`docker build -t librespot-shairport-snapserver:local -f ./alpine.dockerfile .`
+`docker build -t librespot-java-shairport-sync-snapserver:local -f alpine.dockerfile .`
 
 ## Notes
 
