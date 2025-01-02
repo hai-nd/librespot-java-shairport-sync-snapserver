@@ -17,8 +17,15 @@ Images for `amd64` can be found at [ghcr.io/yubiuser/librespot-shairport-snapser
 Use with
 
 ```plain
-docker pull ghcr.io/yubiuser/librespot-shairport-snapserver
-docker run -d --rm --net host -v ./snapserver.conf:/etc/snapserver.conf --name snapserver librespot-shairport-snapserver
+docker pull haingo65/librespot-java-shairport-sync-snapserver
+docker run -d \
+--name snapserver \
+--net host \
+--device /dev/snd \
+-v ./snapserver/config:/config \
+-v ./snapserver/plug-ins:/etc/plug-ins \
+--mount type=bind,source="$(pwd)"/tmp,target=/tmp \
+haingo65/librespot-java-shairport-sync-snapserver:latest
 ```
 
 or with `docker-compose.yml`
