@@ -58,4 +58,4 @@ To build the image run it in termial:
   - `s6-notifyoncheck` is used to check readiness of the started services `dbus` and `avahi`. The actual check is performed by sending `dbus`messages and analyzing the reply.
 - Adjust `snapserver.conf` as required (Airplay 2 needs port 7000)
 - [Snapweb](https://github.com/badaix/snapweb) is inclued in the image and can be accessed on `http://<snapserver host>:1780`
-- An alternative Debian based image (Bookworm) is offered, final image size is ~262 MB
+- Only work in Linux, it does not support Windows or Mac OSX because mDNS can not work from docker desktop to LAN local network.
