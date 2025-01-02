@@ -1,27 +1,7 @@
+# The alpine dockerfile for librespot-java, shairport-sync, snapserver with snapweb
+# maintained by Hai Ngo, inspired by several source on the internet
 # ARG alpine_version=3.20
 ARG S6_OVERLAY_VERSION=3.2.0.0
-
-###### LIBRESPOT START ###### git checkout 3781a089a69ce9883a299dfd191d90c9a5348819
-FROM maven:latest AS libre-builder
-
-ARG LIBRESPOT_JAVA_VERSION=1.6.3
-
-RUN apt-get update \
-    && apt-get install -yq wget unzip
-
-WORKDIR /root
-RUN wget https://github.com/librespot-org/librespot-java/archive/refs/tags/v$LIBRESPOT_JAVA_VERSION.zip \
-    && unzip v*.zip \
-    && cd librespot* \
-    && mvn clean package
-
-FROM alpine:latest 
-
-RUN apk -U add dumb-init openjdk17-jre alsa-utils
-
-COPY --from=builder /root/librespot*/api/target/librespot-api-*.jar /usr/local/bin
-
-###### LIBRESPOT END ######
 
 FROM docker.io/alpine:latest AS builder
 RUN apk add --no-cache \
@@ -174,10 +154,25 @@ ENV S6_CMD_WAIT_FOR_SERVICES=1
 ENV S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0
 
 RUN apk add --no-cache \
+            bash \
             avahi \
             dbus \
             nano \
             procps \
+            python3 \
+            py3-pip \
+            py3-gobject3 \
+            py3-requests \
+            py3-websocket-client \
+            py3-musicbrainzngs \
+            dumb-init \
+            openjdk17-jre \
+            alsa-utils \
+            nodejs \
+            jq \
+            npm \
+            curl \
+    && npm install -g wscat \
     && rm -rf /lib/apk/db/*
 
 # Copy extracted s6-overlay and libs from base
@@ -188,16 +183,16 @@ COPY --from=base init /init
 COPY --from=base /tmp-libs/ /usr/lib/
 
 # Copy all necessary files from the builders
-#### COPY --from=librespot /librespot/target/release/librespot /usr/local/bin/
+### COPY --from=librespot /librespot/target/release/librespot /usr/local/bin/
 COPY --from=snapcast /snapcast/bin/snapserver /usr/local/bin/
 COPY --from=snapcast /snapweb/dist /usr/share/snapserver/snapweb
 COPY --from=shairport /shairport/build/shairport-sync /usr/local/bin/
 COPY --from=shairport /nqptp/nqptp /usr/local/bin/
 
 # COPY config.toml /config/ - copy librespot-api.sh
-COPY ./plug-ins/librespot-api.sh /usr/local/bin
+COPY ./plug-ins/librespot-api-1.6.3.jar /usr/local/bin
 COPY ./plug-ins/config.toml /usr/local/bin
-RUN chmod -R +x /usr/local/bin/librespot-api.sh && \
+RUN chmod -R +x /usr/local/bin/librespot-api-1.6.3.jar && \
     chmod -R 777 /usr/local/bin/config.toml
 
 # Set permissions for the plugin folder
@@ -205,7 +200,7 @@ RUN mkdir -p /etc/plug-ins
 # Copy metadata plugins to /etc/plug-ins/
 COPY ./plug-ins/meta_mopidy.py /etc/plug-ins
 COPY ./plug-ins/meta_mpd.py /etc/plug-ins
-COPY ./plug-ins/meta_librespot-java.py /etc/plug-ins
+COPY ./plug-ins/librespot-java.py /etc/plug-ins
 RUN chmod -R +x /etc/plug-ins && \
     chmod -R 777 /etc/plug-ins
 
