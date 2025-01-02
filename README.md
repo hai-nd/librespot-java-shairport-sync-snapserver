@@ -8,7 +8,7 @@ Idea adapted from [librespot-shairport-snapserver](https://github.com/yubiuser/l
  **Version of librespot-java:** When this project started, the last releases of *librespot-api* is 1.6.4 not work.
   I have to build my own librespot-api version 1.6.3 and put it in the project folder.
 
- **Note** The coresponding Docker image for runinng `snapclient` can be found here: [https://github.com/yubiuser/snapclient-docker](https://github.com/yubiuser/snapclient-docker)
+ **Note** You can install Snap.Net for Windows snapclient and simply run `http://<snapserver host>:1780` on the browser to start snapclient of current PC.
 
 ## Getting started
 
