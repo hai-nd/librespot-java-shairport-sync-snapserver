@@ -45,7 +45,7 @@ services:
 
 ### Build locally
 
-To build the image simply run
+To build the image run it in termial:
 
 `docker build -t librespot-java-shairport-sync-snapserver:local -f alpine.dockerfile .`
 
