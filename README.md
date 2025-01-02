@@ -12,7 +12,7 @@ Idea adapted from [librespot-shairport-snapserver](https://github.com/yubiuser/l
 
 ## Getting started
 
-Images for `amd64` can be found at [ghcr.io/yubiuser/librespot-shairport-snapserver](ghcr.io/yubiuser/librespot-shairport-snapserver).
+It is the alpine.dockerfile for building alpine-base image. There will be 'amd64' version if it's needed in the future!
 
 Use with
 
