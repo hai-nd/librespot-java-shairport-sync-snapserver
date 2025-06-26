@@ -192,8 +192,7 @@ COPY --from=shairport /nqptp/nqptp /usr/local/bin/
 # COPY config.toml /config/ - copy librespot-api.sh
 COPY ./plug-ins/librespot-api-1.6.3.jar /usr/local/bin
 COPY ./plug-ins/config.toml /usr/local/bin
-RUN chmod -R +x /usr/local/bin/librespot-api-1.6.3.jar && \
-    chmod -R 777 /usr/local/bin/config.toml
+RUN chmod -R 777 /usr/local/bin/config.toml
 
 # Set permissions for the plugin folder
 RUN mkdir -p /etc/plug-ins
