@@ -200,7 +200,7 @@ RUN mkdir -p /etc/plug-ins
 # Copy metadata plugins to /etc/plug-ins/
 COPY ./plug-ins/meta_mopidy.py /etc/plug-ins
 COPY ./plug-ins/meta_mpd.py /etc/plug-ins
-COPY ./plug-ins/librespot-java.py /etc/plug-ins
+COPY ./plug-ins/meta_librespot-java.py /etc/plug-ins
 RUN chmod -R +x /etc/plug-ins && \
     chmod -R 777 /etc/plug-ins
 
